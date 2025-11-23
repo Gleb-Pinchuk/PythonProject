@@ -18,6 +18,8 @@
 
 1. Клонируйте репозиторий:
 
+https://github.com/Gleb-Pinchuk/PythonProject/pull/1
+
 2. Установка зависимостей:
 pip install poetry
 poetry install
