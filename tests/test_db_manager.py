@@ -1,0 +1,100 @@
+import pytest
+import psycopg2
+from src.database import create_database
+from src.db_manager import DBManager
+
+
+DB_PARAMS = {
+    "host": "localhost",
+    "user": "postgres",
+    "password": "12345678",
+}
+TEST_DB_NAME = "test_hh_db_pytest"
+
+
+@pytest.fixture(scope="session")
+def db_manager():
+    """Фикстура: создаёт тестовую БД, заполняет данными и возвращает DBManager."""
+    create_database(TEST_DB_NAME, DB_PARAMS)
+
+    conn = psycopg2.connect(dbname=TEST_DB_NAME, **DB_PARAMS)
+    cur = conn.cursor()
+
+    cur.execute(
+        "INSERT INTO employers (employer_id, name, url) VALUES (%s, %s, %s)",
+        (1, "Альфа-Банк", "https://hh.ru/employer/1")
+    )
+    cur.execute(
+        "INSERT INTO employers (employer_id, name, url) VALUES (%s, %s, %s)",
+        (2, "Сбер", "https://hh.ru/employer/2")
+    )
+
+    cur.execute("""
+        INSERT INTO vacancies (vacancy_id, employer_id, title, salary_from, salary_to, currency, url)
+        VALUES
+        (101, 1, 'Python Developer', 100000, 150000, 'RUR', 'https://hh.ru/vacancy/101'),
+        (102, 1, 'Junior Python Dev', 70000, NULL, 'RUR', 'https://hh.ru/vacancy/102'),
+        (103, 2, 'Data Analyst', NULL, 120000, 'RUR', 'https://hh.ru/vacancy/103'),
+        (104, 2, 'Java Developer', 90000, 130000, 'RUR', 'https://hh.ru/vacancy/104'),
+        (105, 2, 'Python ML Engineer', 140000, 200000, 'RUR', 'https://hh.ru/vacancy/105')
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    yield DBManager(TEST_DB_NAME, DB_PARAMS)
+
+    conn = psycopg2.connect(dbname="postgres", **DB_PARAMS)
+    conn.autocommit = True
+    cur = conn.cursor()
+    cur.execute(f"DROP DATABASE IF EXISTS {TEST_DB_NAME}")
+    cur.close()
+    conn.close()
+
+
+def test_get_companies_and_vacancies_count(db_manager):
+    result = db_manager.get_companies_and_vacancies_count()
+    assert len(result) == 2
+    result_dict = {name: count for name, count in result}
+    assert result_dict["Альфа-Банк"] == 2
+    assert result_dict["Сбер"] == 3
+
+
+def test_get_all_vacancies(db_manager):
+    result = db_manager.get_all_vacancies()
+    assert len(result) == 5
+    assert result[0][0] == "Альфа-Банк"
+    assert "Python" in result[0][1]
+
+
+def test_get_avg_salary(db_manager):
+    avg = db_manager.get_avg_salary()
+    assert abs(avg - 119000) < 1
+
+
+def test_get_vacancies_with_higher_salary(db_manager):
+    result = db_manager.get_vacancies_with_higher_salary()
+    salaries = []
+    for row in result:
+        s_from, s_to = row[2], row[3]
+        if s_from is not None and s_to is not None:
+            sal = (s_from + s_to) / 2
+        else:
+            sal = s_from or s_to or 0
+        salaries.append(sal)
+
+    avg = db_manager.get_avg_salary()
+    assert all(s > avg for s in salaries)
+    titles = [row[1] for row in result]
+    assert "Python ML Engineer" in titles
+    assert "Python Developer" in titles
+    assert "Data Analyst" in titles
+    assert "Java Developer" not in titles
+
+
+def test_get_vacancies_with_keyword(db_manager):
+    result = db_manager.get_vacancies_with_keyword("Python")
+    assert len(result) == 3
+    for row in result:
+        assert "python" in row[1].lower()
