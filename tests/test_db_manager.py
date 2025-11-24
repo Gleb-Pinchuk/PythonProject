@@ -1,8 +1,8 @@
-import pytest
 import psycopg2
+import pytest
+
 from src.database import create_database
 from src.db_manager import DBManager
-
 
 DB_PARAMS = {
     "host": "localhost",
@@ -22,14 +22,15 @@ def db_manager():
 
     cur.execute(
         "INSERT INTO employers (employer_id, name, url) VALUES (%s, %s, %s)",
-        (1, "Альфа-Банк", "https://hh.ru/employer/1")
+        (1, "Альфа-Банк", "https://hh.ru/employer/1"),
     )
     cur.execute(
         "INSERT INTO employers (employer_id, name, url) VALUES (%s, %s, %s)",
-        (2, "Сбер", "https://hh.ru/employer/2")
+        (2, "Сбер", "https://hh.ru/employer/2"),
     )
 
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO vacancies (vacancy_id, employer_id, title, salary_from, salary_to, currency, url)
         VALUES
         (101, 1, 'Python Developer', 100000, 150000, 'RUR', 'https://hh.ru/vacancy/101'),
@@ -37,7 +38,8 @@ def db_manager():
         (103, 2, 'Data Analyst', NULL, 120000, 'RUR', 'https://hh.ru/vacancy/103'),
         (104, 2, 'Java Developer', 90000, 130000, 'RUR', 'https://hh.ru/vacancy/104'),
         (105, 2, 'Python ML Engineer', 140000, 200000, 'RUR', 'https://hh.ru/vacancy/105')
-    """)
+    """
+    )
 
     conn.commit()
     cur.close()
