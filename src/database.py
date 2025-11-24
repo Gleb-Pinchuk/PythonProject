@@ -1,13 +1,16 @@
 import psycopg2
 from psycopg2 import sql
 
+
 def create_database(database_name: str, params: dict):
     """Создаёт базу данных и таблицы."""
-    conn = psycopg2.connect(dbname='postgres', **params)
+    conn = psycopg2.connect(dbname="postgres", **params)
     conn.autocommit = True
     cur = conn.cursor()
 
-    cur.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(database_name)))
+    cur.execute(
+        sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(database_name))
+    )
     cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name)))
 
     cur.close()
@@ -16,15 +19,18 @@ def create_database(database_name: str, params: dict):
     conn = psycopg2.connect(dbname=database_name, **params)
     cur = conn.cursor()
 
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE employers (
             employer_id INT PRIMARY KEY,
             name VARCHAR(255),
             url VARCHAR(255)
         );
-    """)
+    """
+    )
 
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE vacancies (
             vacancy_id INT PRIMARY KEY,
             employer_id INT REFERENCES employers(employer_id),
@@ -34,7 +40,8 @@ def create_database(database_name: str, params: dict):
             currency VARCHAR(10),
             url VARCHAR(255)
         );
-    """)
+    """
+    )
 
     conn.commit()
     cur.close()
