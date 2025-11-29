@@ -9,12 +9,23 @@
 """
 
 from typing import List, Optional, Tuple
+import sys
 
 from src.app import load_data_to_db
-from src.config import load_db_config
+from src.config import load_db_config, get_db_name
 from src.db_manager import DBManager
 
-DB_NAME = "hh_vacancies"
+
+def format_salary(s_from: Optional[int], s_to: Optional[int]) -> str:
+    """Форматирует диапазон зарплаты для вывода."""
+    if s_from is not None and s_to is not None:
+        return f"{s_from} – {s_to}"
+    elif s_from is not None:
+        return f"от {s_from}"
+    elif s_to is not None:
+        return f"до {s_to}"
+    else:
+        return "Не указана"
 
 
 def print_companies_and_vacancies(db: DBManager) -> None:
@@ -32,7 +43,7 @@ def print_all_vacancies(db: DBManager) -> None:
         db.get_all_vacancies()
     )
     for company, title, s_from, s_to, url in results[:5]:
-        salary = f"{s_from or '—'} – {s_to or '—'}" if s_from or s_to else "Не указана"
+        salary = format_salary(s_from, s_to)
         print(f"  • {company} — {title} | Зарплата: {salary} | {url}")
 
 
@@ -51,8 +62,8 @@ def print_higher_salary_vacancies(db: DBManager) -> None:
     if not results:
         print("  Нет вакансий с зарплатой выше средней.")
         return
-    for company, title, s_from, s_to, url in results[:10]:  # ограничим для читаемости
-        salary = f"{s_from or '—'} – {s_to or '—'}" if s_from or s_to else "Не указана"
+    for company, title, s_from, s_to, url in results[:10]:
+        salary = format_salary(s_from, s_to)
         print(f"  • {company} — {title} | Зарплата: {salary} | {url}")
 
 
@@ -67,7 +78,7 @@ def print_python_vacancies(db: DBManager) -> None:
         print(f"  Вакансий с '{keyword}' не найдено.")
         return
     for company, title, s_from, s_to, url in results:
-        salary = f"{s_from or '—'} – {s_to or '—'}" if s_from or s_to else "Не указана"
+        salary = format_salary(s_from, s_to)
         print(f"  • {company} — {title} | Зарплата: {salary} | {url}")
 
 
@@ -75,11 +86,13 @@ def main() -> None:
     """Основная функция запуска приложения."""
     try:
         config = load_db_config()
+        db_name = get_db_name()
+
         print("🔄 Загрузка данных из hh.ru и сохранение в PostgreSQL...")
-        load_data_to_db(DB_NAME, config)
+        load_data_to_db(db_name, config)
 
         print("✅ Данные успешно загружены. Анализ:")
-        db = DBManager(DB_NAME, config)
+        db = DBManager(db_name, config)
 
         print_companies_and_vacancies(db)
         print_all_vacancies(db)
@@ -87,9 +100,12 @@ def main() -> None:
         print_higher_salary_vacancies(db)
         print_python_vacancies(db)
 
+    except ValueError as e:
+        print(f"\n❌ Ошибка конфигурации: {e}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
-        print(f"\n❌ Ошибка при выполнении: {e}")
-        raise
+        print(f"\n❌ Неожиданная ошибка: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
