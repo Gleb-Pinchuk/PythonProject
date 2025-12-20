@@ -5,18 +5,20 @@ from typing import Dict, Any
 
 def create_database(database_name: str, params: Dict[str, Any]) -> None:
     """
-    Создаёт новую базу данных и инициализирует в ней таблицы employers и vacancies.
+    Создаёт новую БД, предварительно удалив старую (если существует).
     """
-    # Подключение к служебной базе 'postgres' для создания новой БД
-    with psycopg2.connect(dbname="postgres", **params) as conn:
-        conn.autocommit = True
+    conn = psycopg2.connect(dbname="postgres", **params)
+    conn.autocommit = True
+    try:
         with conn.cursor() as cur:
             cur.execute(
                 sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(database_name))
             )
             cur.execute(
-                sql.SQL("CREATE DATABASE {}").format(sql.Identifier(databaseatabase_name))
+                sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name))
             )
+    finally:
+        conn.close()
 
     with psycopg2.connect(dbname=database_name, **params) as conn:
         with conn.cursor() as cur:
